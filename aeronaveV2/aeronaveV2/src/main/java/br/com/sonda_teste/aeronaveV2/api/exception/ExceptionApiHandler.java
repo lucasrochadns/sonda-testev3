@@ -9,18 +9,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
-public class ExceptionHandler {
+public class ExceptionApiHandler {
 
-    @org.springframework.web.bind.annotation.ExceptionHandler(AeronaveNotFoundException.class)
+    @ExceptionHandler(AeronaveNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(AeronaveNotFoundException ex, HttpServletRequest request) {
         return build(HttpStatus.NOT_FOUND, "Resource not found", ex.getMessage(), request.getRequestURI(), null);
     }
 
-    @org.springframework.web.bind.annotation.ExceptionHandler(MethodArgumentNotValidException.class)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
         List<Violation> violations = ex.getBindingResult().getFieldErrors().stream()
                 .map(this::toViolation)
@@ -29,12 +30,12 @@ public class ExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Validation failed", "One or more fields are invalid.", request.getRequestURI(), violations);
     }
 
-    @org.springframework.web.bind.annotation.ExceptionHandler(DataIntegrityViolationException.class)
+    @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, "Data integrity violation", "Operation violates a database constraint.", request.getRequestURI(), null);
     }
 
-    @org.springframework.web.bind.annotation.ExceptionHandler(Exception.class)
+    @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", "An unexpected error occurred.", request.getRequestURI(), null);
     }
@@ -55,4 +56,17 @@ public class ExceptionHandler {
         return new Violation(fe.getField(), fe.getDefaultMessage());
     }
 
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiErrorResponse> generic(Exception ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ApiErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.NOT_FOUND.value(),
+                        "Internal Server Error",
+                        "Erro inesperado",
+                        req.getRequestURI(),
+                        List.of()
+                )
+        );
+    }
 }
